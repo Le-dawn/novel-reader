@@ -1,0 +1,19 @@
+{
+    "spring": {
+        "datasource": {
+            "druid": {
+                "master": {
+                    "url": "jdbc:mysql://pms-mysql:3306/pms_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=GMT%2B8&rewriteBatchedStatements=true",
+                    "username": "root",
+                    "password": "pms@Ld3413"
+                },
+                "sharding": {
+                    "enabled": true,
+                    "url": "jdbc:mysql://record-data:3306/pms_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=GMT%2B8&rewriteBatchedStatements=true",
+                    "username": "root",
+                    "password": "pms@Ld3413"
+                }
+            }
+        }
+    }
+}

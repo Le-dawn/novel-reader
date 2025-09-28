@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es2016",
+    "outDir": "dist",
+    "strict": true,
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "types": ["vscode", "node"],
+    "typeRoots": ["node_modules/@types"],
+    "declaration": false
+  },
+  "exclude": ["node_modules", "**/*.spec.ts"]
+}

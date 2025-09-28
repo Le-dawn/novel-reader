@@ -1,0 +1,128 @@
+{
+  "name": "novel-reader",
+  "displayName": "Novel Reader",
+  "description": "A simple novel reader for VS Code.",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.66.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onView:novelReaderSidebar",
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "novelReader.importNovel",
+        "title": "导入小说",
+        "icon": "$(add)"
+      },
+      {
+        "command": "novelReader.refreshSidebar",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "novelReader.deleteNovel",
+        "title": "Delete Novel",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "novelReader.showCurrentChapter",
+        "title": "Show Current Chapter",
+        "icon": "$(book)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "novelReaderContainer",
+          "title": "Novel Reader",
+          "icon": "$(book)"
+        }
+      ],
+      "panel": [
+        {
+          "id": "novelReaderBottomContainer",
+          "title": "Novel Reader",
+          "icon": "$(book)"
+        }
+      ]
+    },
+    "views": {
+      "novelReaderContainer": [
+        {
+          "id": "novelReaderSidebar",
+          "name": "Novel Reader",
+          "contextualTitle": "Novel Reader"
+        }
+      ],
+      "novelReaderBottomContainer": [
+        {
+          "id": "novelReaderBottomContainerView",
+          "name": "Novel Reader",
+          "type": "webview"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "novelReader.importNovel",
+          "when": "view == novelReaderSidebar",
+          "group": "navigation"
+        },
+        {
+          "command": "novelReader.refreshSidebar",
+          "when": "view == novelReaderSidebar",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "novelReader.showCurrentChapter",
+          "when": "viewItem == 'novelItem'",
+          "group": "inline@1"
+        },
+        {
+          "command": "novelReader.deleteNovel",
+          "when": "viewItem == 'novelItem'",
+          "group": "inline@2"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/crypto-js": "^4.2.2",
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.6",
+    "@types/node": "18.x",
+    "@types/vscode": "^1.66.0",
+    "@typescript-eslint/eslint-plugin": "^7.11.0",
+    "@typescript-eslint/parser": "^7.11.0",
+    "@vscode/test-electron": "^2.3.9",
+    "@vscode/vsce": "^3.6.0",
+    "eslint": "^8.57.0",
+    "glob": "^10.4.1",
+    "mocha": "^10.4.0",
+    "typescript": "^5.4.5"
+  },
+  "packageManager": "pnpm@10.11.0+sha512.6540583f41cc5f628eb3d9773ecee802f4f9ef9923cc45b69890fb47991d4b092964694ec3a4f738a420c918a333062c8b925d312f42e4f0c263eb603551f977",
+  "dependencies": {
+    "crypto-js": "^4.2.0",
+    "iconv-lite": "^0.7.0",
+    "jschardet": "^3.1.4"
+  }
+}

@@ -1,9 +1,9 @@
 
 import * as vscode from 'vscode';
-import * as fs from 'fs';
 import { parseChapters } from './chapterParser';
 import { Novel } from './sidebar';
 import { GlobalStateEnum } from './globalStateEnum';
+import { readTextFileWithAutoEncoding } from './utils';
 
 export class NovelReaderViewProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'novelReaderBottomContainerView';
@@ -79,7 +79,7 @@ export class NovelReaderViewProvider implements vscode.WebviewViewProvider {
         this._currentChapterIndex = chapterIndex;
 
         try {
-            const novelText = fs.readFileSync(novel.path, 'utf-8');
+            const novelText = readTextFileWithAutoEncoding(novel.path);
             this._chapters = parseChapters(novelText);
             const chapter = this._chapters[chapterIndex];
 

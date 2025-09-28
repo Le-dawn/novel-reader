@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
-import * as fs from 'fs';
 import { parseChapters } from './chapterParser';
 import { GlobalStateEnum } from './globalStateEnum';
+import { readTextFileWithAutoEncoding } from './utils';
 
 // Define the structure for a novel object
 export interface Novel {
@@ -32,7 +32,7 @@ export class NovelSidebarProvider implements vscode.TreeDataProvider<TreeItem> {
         if (element instanceof NovelItem) {
             // If the element is a NovelItem, return its chapters
             try {
-                const novelText = fs.readFileSync(element.novel.path, 'utf-8');
+                const novelText = readTextFileWithAutoEncoding(element.novel.path);
                 const chapters = parseChapters(novelText);
                 return Promise.resolve(
                     chapters.map((chapter, index) => new ChapterItem(chapter.title, element.novel, index))

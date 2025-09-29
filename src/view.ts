@@ -6,6 +6,12 @@ import { GlobalStateEnum } from './enums/globalStateEnum';
 import { VscodeCommandEnum } from './enums/vscodeCommandEnum';
 import { readTextFileWithAutoEncoding } from './utils';
 
+const NEXT_CHAPTER = 'nextChapter';
+const PREVIOUS_CHAPTER = 'previousChapter';
+const CLOSE_READER = 'closeReader';
+const UPDATE_FONT_SIZE = 'updateFontSize';
+const SHORTCUT_KEY = 'ctrl+delete';
+
 export class NovelReaderViewProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'novelReaderBottomContainerView';
 
@@ -33,16 +39,23 @@ export class NovelReaderViewProvider implements vscode.WebviewViewProvider {
 
         webviewView.webview.onDidReceiveMessage(message => {
             switch (message.command) {
-                case 'nextChapter':
+                case NEXT_CHAPTER:
                     vscode.commands.executeCommand(VscodeCommandEnum.NEXT_CHAPTER);
                     return;
-                case 'previousChapter':
+                case PREVIOUS_CHAPTER:
                     vscode.commands.executeCommand(VscodeCommandEnum.PREVIOUS_CHAPTER);
                     return;
-                case 'closeReader':
+                case SHORTCUT_KEY:
+                    if (this._currentNovel) {
+                        vscode.commands.executeCommand(VscodeCommandEnum.SHOW_CURRENT_NOVEL);
+                    } else {
+                        this.clearView();
+                    }
+                    return;
+                case CLOSE_READER:
                     this.clearView();
                     return;
-                case 'updateFontSize':
+                case UPDATE_FONT_SIZE:
                     this._context.globalState.update(GlobalStateEnum.FONT_SIZE, message.payload);
                     return;
             }
@@ -262,9 +275,9 @@ export class NovelReaderViewProvider implements vscode.WebviewViewProvider {
                     };
 
                     // --- Event Listeners ---
-                    elements.prev.forEach(el => el.addEventListener('click', () => vscode.postMessage({ command: 'previousChapter' })));
+                    elements.prev.forEach(el => el.addEventListener('click', () => vscode.postMessage({ command: PREVIOUS_CHAPTER })));
                     elements.next.forEach(el => el.addEventListener('click', () => vscode.postMessage({ command: 'nextChapter' })));
-                    elements.close.forEach(el => el.addEventListener('click', () => vscode.postMessage({ command: 'closeReader' })));
+                    elements.close.forEach(el => el.addEventListener('click', () => vscode.postMessage({ command: CLOSE_READER })));
                     elements.fontIncrease.forEach(el => el.addEventListener('click', () => updateFontSize('increase')));
                     elements.fontDecrease.forEach(el => el.addEventListener('click', () => updateFontSize('decrease')));
 
@@ -278,7 +291,7 @@ export class NovelReaderViewProvider implements vscode.WebviewViewProvider {
                         titleEl.style.fontSize = currentFontSize + 'px';
                         contentEl.style.fontSize = currentFontSize + 'px';
                         elements.fontSizeDisplay.forEach(el => el.textContent = currentFontSize + 'px');
-                        vscode.postMessage({ command: 'updateFontSize', payload: currentFontSize });
+                        vscode.postMessage({ command: UPDATE_FONT_SIZE, payload: currentFontSize });
                     }
 
                     function showReaderView() {
@@ -298,7 +311,7 @@ export class NovelReaderViewProvider implements vscode.WebviewViewProvider {
                             // Handle arrow keys for navigation
                             if (event.key === 'ArrowLeft') {
                                 event.preventDefault();
-                                vscode.postMessage({ command: 'previousChapter' });
+                                vscode.postMessage({ command: PREVIOUS_CHAPTER });
                             } else if (event.key === 'ArrowRight') {
                                 event.preventDefault();
                                 vscode.postMessage({ command: 'nextChapter' });
@@ -306,7 +319,7 @@ export class NovelReaderViewProvider implements vscode.WebviewViewProvider {
                             // Handle Ctrl+Delete to reset view
                             else if (event.ctrlKey && event.key === 'Delete') {
                                 event.preventDefault();
-                                vscode.postMessage({ command: 'closeReader' });
+                                vscode.postMessage({ command: SHORTCUT_KEY });
                             }
                         }
                     });

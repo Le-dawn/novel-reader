@@ -94,6 +94,19 @@ export function activate(context: vscode.ExtensionContext) {
         viewProvider.loadChapter(item.novel, item.chapterIndex);
     }));
 
+    // Register the command to open current novel
+    context.subscriptions.push(vscode.commands.registerCommand(VscodeCommandEnum.SHOW_CURRENT_NOVEL, async () => {
+        const lastViewedNovelId = context.globalState.get<string | undefined>(GlobalStateEnum.LAST_VIEWED_NOVEL_ID);
+        const novels = context.globalState.get<Novel[]>(GlobalStateEnum.NOVELS, []);
+        const novelToShow = novels.find(n => n.id === lastViewedNovelId) || novels[0];
+
+        if (novelToShow) {
+            viewProvider.loadChapter(novelToShow, novelToShow.currentChapter);
+        } else {
+            vscode.window.showInformationMessage("No novels available. Please import a novel first.");
+        }
+    }));
+
     context.subscriptions.push(vscode.commands.registerCommand(VscodeCommandEnum.SHOW_CURRENT_CHAPTER, (item: NovelItem) => {
         viewProvider.loadChapter(item.novel, item.novel.currentChapter);
     }));

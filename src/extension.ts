@@ -100,10 +100,12 @@ export function activate(context: vscode.ExtensionContext) {
     // Register commands for chapter navigation
     context.subscriptions.push(vscode.commands.registerCommand('novelReader.nextChapter', () => {
         viewProvider.navigateChapter('next');
+        sidebarProvider.refresh(); // Refresh sidebar to show new chapter
     }));
 
     context.subscriptions.push(vscode.commands.registerCommand('novelReader.previousChapter', () => {
         viewProvider.navigateChapter('previous');
+        sidebarProvider.refresh(); // Refresh sidebar to show new chapter
     }));
 
     // Register the command to refresh the sidebar

@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { parseChapters } from './chapterParser';
-import { GlobalStateEnum } from './globalStateEnum';
+import { GlobalStateEnum } from './enums/globalStateEnum';
+import { VscodeCommandEnum } from './enums/vscodeCommandEnum';
 import { readTextFileWithAutoEncoding } from './utils';
 
 // Define the structure for a novel object
@@ -69,7 +70,7 @@ export class ChapterItem extends vscode.TreeItem {
         
         // Command to execute when the chapter is clicked
         this.command = {
-            command: 'novelReader.openChapter',
+            command: VscodeCommandEnum.OPEN_CHAPTER,
             title: 'Open Chapter',
             arguments: [this],
         };

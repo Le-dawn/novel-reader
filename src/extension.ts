@@ -2,7 +2,8 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
-import { GlobalStateEnum } from './globalStateEnum';
+import { GlobalStateEnum } from './enums/globalStateEnum';
+import { VscodeCommandEnum } from './enums/vscodeCommandEnum';
 import { NovelSidebarProvider, Novel, NovelItem, ChapterItem } from './sidebar';
 import { NovelReaderViewProvider } from './view';
 
@@ -50,7 +51,7 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     // Register the command to import a new novel
-    context.subscriptions.push(vscode.commands.registerCommand('novelReader.importNovel', async () => {
+    context.subscriptions.push(vscode.commands.registerCommand(VscodeCommandEnum.IMPORT_NOVEL, async () => {
         const fileUris = await vscode.window.showOpenDialog({
             canSelectMany: false,
             filters: { 'Text Files': ['txt'] }
@@ -80,7 +81,7 @@ export function activate(context: vscode.ExtensionContext) {
     }));
 
     // Register the command to open a chapter from the sidebar
-    context.subscriptions.push(vscode.commands.registerCommand('novelReader.openChapter', async (item: ChapterItem) => {
+    context.subscriptions.push(vscode.commands.registerCommand(VscodeCommandEnum.OPEN_CHAPTER, async (item: ChapterItem) => {
         // Update the current chapter in the global state
         const novels = context.globalState.get<Novel[]>(GlobalStateEnum.NOVELS, []);
         const novelToUpdate = novels.find(n => n.path === item.novel.path);
@@ -93,28 +94,26 @@ export function activate(context: vscode.ExtensionContext) {
         viewProvider.loadChapter(item.novel, item.chapterIndex);
     }));
 
-    context.subscriptions.push(vscode.commands.registerCommand('novelReader.showCurrentChapter', (item: NovelItem) => {
+    context.subscriptions.push(vscode.commands.registerCommand(VscodeCommandEnum.SHOW_CURRENT_CHAPTER, (item: NovelItem) => {
         viewProvider.loadChapter(item.novel, item.novel.currentChapter);
     }));
 
     // Register commands for chapter navigation
-    context.subscriptions.push(vscode.commands.registerCommand('novelReader.nextChapter', () => {
+    context.subscriptions.push(vscode.commands.registerCommand(VscodeCommandEnum.NEXT_CHAPTER, () => {
         viewProvider.navigateChapter('next');
-        sidebarProvider.refresh(); // Refresh sidebar to show new chapter
     }));
 
-    context.subscriptions.push(vscode.commands.registerCommand('novelReader.previousChapter', () => {
+    context.subscriptions.push(vscode.commands.registerCommand(VscodeCommandEnum.PREVIOUS_CHAPTER, () => {
         viewProvider.navigateChapter('previous');
-        sidebarProvider.refresh(); // Refresh sidebar to show new chapter
     }));
 
     // Register the command to refresh the sidebar
-    context.subscriptions.push(vscode.commands.registerCommand('novelReader.refreshSidebar', () => {
+    context.subscriptions.push(vscode.commands.registerCommand(VscodeCommandEnum.REFRESH_SIDEBAR, () => {
         sidebarProvider.refresh();
     }));
 
     // Register the command to delete a novel
-    context.subscriptions.push(vscode.commands.registerCommand('novelReader.deleteNovel', async (item: NovelItem) => {
+    context.subscriptions.push(vscode.commands.registerCommand(VscodeCommandEnum.DELETE_NOVEL, async (item: NovelItem) => {
         if (!item) {
             return;
         }

@@ -2,7 +2,8 @@
 import * as vscode from 'vscode';
 import { parseChapters } from './chapterParser';
 import { Novel } from './sidebar';
-import { GlobalStateEnum } from './globalStateEnum';
+import { GlobalStateEnum } from './enums/globalStateEnum';
+import { VscodeCommandEnum } from './enums/vscodeCommandEnum';
 import { readTextFileWithAutoEncoding } from './utils';
 
 export class NovelReaderViewProvider implements vscode.WebviewViewProvider {
@@ -33,10 +34,10 @@ export class NovelReaderViewProvider implements vscode.WebviewViewProvider {
         webviewView.webview.onDidReceiveMessage(message => {
             switch (message.command) {
                 case 'nextChapter':
-                    vscode.commands.executeCommand('novelReader.nextChapter');
+                    vscode.commands.executeCommand(VscodeCommandEnum.NEXT_CHAPTER);
                     return;
                 case 'previousChapter':
-                    vscode.commands.executeCommand('novelReader.previousChapter');
+                    vscode.commands.executeCommand(VscodeCommandEnum.PREVIOUS_CHAPTER);
                     return;
                 case 'closeReader':
                     this.clearView();
@@ -125,7 +126,9 @@ export class NovelReaderViewProvider implements vscode.WebviewViewProvider {
             const novelToUpdate = novels.find(n => n.path === this._currentNovel!.path);
             if (novelToUpdate) {
                 novelToUpdate.currentChapter = newIndex;
-                this._context.globalState.update(GlobalStateEnum.NOVELS, novels);
+                this._context.globalState.update(GlobalStateEnum.NOVELS, novels).then(() => {
+                    vscode.commands.executeCommand(VscodeCommandEnum.REFRESH_SIDEBAR); // Refresh sidebar to show new chapter
+                });
             }
 
             this.loadChapter(this._currentNovel, newIndex);

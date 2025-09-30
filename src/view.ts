@@ -6,6 +6,13 @@ import { GlobalStateEnum } from './enums/globalStateEnum';
 import { VscodeCommandEnum } from './enums/vscodeCommandEnum';
 import { readTextFileWithAutoEncoding } from './utils';
 
+const NEXT_CHAPTER = 'nextChapter';
+const PREVIOUS_CHAPTER = 'previousChapter';
+const CTRL_DELETE = 'ctrl+delete';
+const CLOSE_READER = 'closeReader';
+const UPDATE_FONT_SIZE = 'updateFontSize';
+const TOGGLE_CONTROLS = 'toggleControls';
+
 export class NovelReaderViewProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'novelReaderBottomContainerView';
 
@@ -14,6 +21,7 @@ export class NovelReaderViewProvider implements vscode.WebviewViewProvider {
     private _chapters: { title: string, content: string }[] = [];
     private _currentChapterIndex: number = 0;
     private _pendingChapter: { novel: Novel, chapterIndex: number } | undefined;
+    private _controlsVisible: boolean = true;
 
     constructor(private readonly _context: vscode.ExtensionContext) { }
 
@@ -24,6 +32,9 @@ export class NovelReaderViewProvider implements vscode.WebviewViewProvider {
     ) {
         this._view = webviewView;
 
+        // 初始化控制面板可见性状态
+        this._controlsVisible = this._context.globalState.get(GlobalStateEnum.CONTROLS_VISIBLE, true);
+
         webviewView.webview.options = {
             enableScripts: true,
             localResourceRoots: [this._context.extensionUri]
@@ -33,24 +44,27 @@ export class NovelReaderViewProvider implements vscode.WebviewViewProvider {
 
         webviewView.webview.onDidReceiveMessage(message => {
             switch (message.command) {
-                case 'nextChapter':
+                case NEXT_CHAPTER:
                     vscode.commands.executeCommand(VscodeCommandEnum.NEXT_CHAPTER);
                     return;
-                case 'previousChapter':
+                case PREVIOUS_CHAPTER:
                     vscode.commands.executeCommand(VscodeCommandEnum.PREVIOUS_CHAPTER);
                     return;
-                case 'ctrl+delete':
+                case CTRL_DELETE:
                     if (!this._currentNovel) {
                         vscode.commands.executeCommand(VscodeCommandEnum.SHOW_CURRENT_NOVEL);
                     } else {
                         this.clearView();
                     }
                     return;
-                case 'closeReader':
+                case CLOSE_READER:
                     this.clearView();
                     return;
-                case 'updateFontSize':
+                case UPDATE_FONT_SIZE:
                     this._context.globalState.update(GlobalStateEnum.FONT_SIZE, message.payload);
+                    return;
+                case TOGGLE_CONTROLS:
+                    this._toggleControls();
                     return;
             }
         });
@@ -142,6 +156,14 @@ export class NovelReaderViewProvider implements vscode.WebviewViewProvider {
         }
     }
 
+    private _toggleControls() {
+        this._controlsVisible = !this._controlsVisible;
+        this._context.globalState.update(GlobalStateEnum.CONTROLS_VISIBLE, this._controlsVisible);
+        if (this._view) {
+            this._view.webview.postMessage({ command: 'updateControlsVisibility', payload: this._controlsVisible });
+        }
+    }
+
     private _getHtmlForWebview(webview: vscode.Webview) {
         const nonce = getNonce();
         return `<!DOCTYPE html>
@@ -162,14 +184,50 @@ export class NovelReaderViewProvider implements vscode.WebviewViewProvider {
                         justify-content: space-between;
                         align-items: center;
                         margin-bottom: 1em;
+                        transition: all 0.3s ease;
                     }
                     .nav-buttons.bottom {
                         margin-top: 1em;
                     }
-                    .font-controls, .page-controls, .close-controls {
+                    .nav-buttons.collapsed {
+                        height: 0;
+                        opacity: 0;
+                        margin: 0;
+                        overflow: hidden;
+                    }
+                    .nav-buttons.top {
+                        position: relative;
+                    }
+                    .nav-buttons.bottom {
+                        position: relative;
+                    }
+                    .controls-wrapper, .font-controls, .page-controls, .close-controls {
                         display: flex;
                         gap: 0.5em;
                         align-items: center;
+                    }
+                    .toggle-controls-btn {
+                        position: absolute;
+                        top: -15px;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        width: 30px;
+                        height: 15px;
+                        padding: 0;
+                        border: 1px solid var(--vscode-button-border);
+                        background-color: var(--vscode-button-background);
+                        color: var(--vscode-button-foreground);
+                        cursor: pointer;
+                        border-radius: 12px;
+                        font-size: 10px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        z-index: 10;
+                        transition: all 0.2s ease;
+                    }
+                    .toggle-controls-btn:hover {
+                        background-color: var(--vscode-button-hoverBackground);
                     }
                     button {
                         padding: 0.25em 0.75em;
@@ -178,6 +236,7 @@ export class NovelReaderViewProvider implements vscode.WebviewViewProvider {
                         color: var(--vscode-button-foreground);
                         cursor: pointer;
                         font-size: 0.9em;
+                        border-radius: 3px;
                     }
                     button:hover {
                         background-color: var(--vscode-button-hoverBackground);
@@ -200,45 +259,286 @@ export class NovelReaderViewProvider implements vscode.WebviewViewProvider {
                     #title, #content {
                         white-space: pre-wrap;
                         line-height: 1.6;
+                        margin: 0;
+                        padding: 0;
                     }
                     .font-size-display {
                         min-width: 3em;
                         text-align: center;
                     }
                 </style>
+                <style>
+                    /* 极简手风琴样式 */
+                    .accordion-nav {
+                        border: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.15));
+                        border-radius: 3px;
+                        margin: 0.2em 0;
+                        background-color: var(--vscode-editor-background);
+                        box-shadow: 0 0 0 1px var(--vscode-widget-shadow, transparent);
+                    }
+
+                    .accordion-header {
+                        display: flex;
+                        align-items: center;
+                        padding: 0.3em 0.7em;
+                        background-color: var(--vscode-editor-background);
+                        border-bottom: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.1));
+                        cursor: pointer;
+                        user-select: none;
+                        transition: all 0.15s ease;
+                    }
+
+                    .accordion-header:hover {
+                        background-color: var(--vscode-list-hoverBackground, rgba(128, 128, 128, 0.05));
+                    }
+
+                    .accordion-header:active {
+                        background-color: var(--vscode-list-activeSelectionBackground, rgba(255,255,255,0.1));
+                    }
+
+                    .accordion-title {
+                        font-weight: 500;
+                        color: var(--vscode-descriptionForeground);
+                        font-size: 0.8em;
+                        letter-spacing: 0.3px;
+                        text-transform: none;
+                        opacity: 0.95;
+                    }
+
+                    .accordion-toggle {
+                        background: none;
+                        border: none;
+                        padding: 0;
+                        font-size: 9px;
+                        color: var(--vscode-descriptionForeground);
+                        cursor: pointer;
+                        transition: transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+                        width: 14px;
+                        height: 14px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        outline: none;
+                        opacity: 0.8;
+                    }
+
+                    .accordion-toggle:hover {
+                        opacity: 1;
+                        transform: scale(1.15);
+                        color: var(--vscode-foreground);
+                    }
+
+                    .accordion-toggle.expanded {
+                        transform: rotate(0deg);
+                    }
+
+                    .accordion-toggle.collapsed {
+                        transform: rotate(-90deg);
+                    }
+
+                    .accordion-content {
+                        overflow: hidden;
+                        transition: max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+                        max-height: 60px; /* 更紧凑的高度 */
+                    }
+
+                    .accordion-content.collapsed {
+                        max-height: 0;
+                    }
+
+                    .accordion-content .controls-container {
+                        padding: 0.5em 0.7em;
+                        display: flex;
+                        gap: 2em;
+                        align-items: center;
+                        background-color: var(--vscode-editor-background);
+                    }
+
+                    .controls-container {
+                        background: none;
+                    }
+
+                    .font-controls, .page-controls, .close-controls {
+                        display: flex;
+                        gap: 0.4em;
+                        align-items: center;
+                    }
+
+                    /* 简约按钮样式 */
+                    .controls-container button {
+                        padding: 0.3em 0.6em;
+                        border: 1px solid var(--vscode-button-border, rgba(128, 128, 128, 0.3));
+                        background-color: var(--vscode-button-background);
+                        color: var(--vscode-button-foreground);
+                        cursor: pointer;
+                        font-size: 0.75em;
+                        border-radius: 2px;
+                        transition: all 0.15s ease;
+                        line-height: 1.2;
+                        min-width: 24px;
+                        text-align: center;
+                        font-family: var(--vscode-editor-font-family, 'Monaco', 'Consolas');
+                        font-weight: 400;
+                        letter-spacing: 0.3px;
+                    }
+
+                    .controls-container button:hover {
+                        background-color: var(--vscode-button-hoverBackground);
+                        border-color: var(--vscode-focusBorder);
+                        transform: translateY(-1px);
+                        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+                    }
+
+                    .controls-container button:active {
+                        transform: translateY(0);
+                        box-shadow: none;
+                    }
+
+                    .controls-container button:disabled {
+                        cursor: not-allowed;
+                        opacity: 0.4;
+                        transform: none;
+                        box-shadow: none;
+                    }
+
+                    /* 键盘高亮样式 */
+                    .controls-container button:focus {
+                        outline: 1px solid var(--vscode-focusBorder);
+                        outline-offset: 1px;
+                    }
+
+                    // .controls-container span {
+                    //     font-size: 0.75em;
+                    //     color: var(--vscode-descriptionForeground);
+                    //     opacity: 0.8;
+                    //     user-select: none;
+                    //    cursor: default;
+                    // }
+
+                    /* 简约字体显示 */
+                    .font-size-display {
+                        min-width: 2.5em;
+                        text-align: center;
+                        font-size: 0.7em;
+                        color: var(--vscode-descriptionForeground);
+                        background-color: var(--vscode-input-background);
+                        border: 1px solid var(--vscode-input-border);
+                        padding: 0.2em 0.4em;
+                        border-radius: 2px;
+                    }
+
+                    /* 深色模式优化 */
+                    .accordion-nav {
+                        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+                    }
+
+                    /* 整体内容区域调整 */
+                    #title {
+                        font-size: 1.1em;
+                        margin-bottom: 0.6em;
+                        color: var(--vscode-foreground);
+                        font-weight: 500;
+                    }
+
+                    #content {
+                        line-height: 1.8;
+                        color: var(--vscode-foreground);
+                        font-family: var(--vscode-editor-font-family, 'Consolas', 'Monaco');
+                        font-size: calc(var(--vscode-editor-font-size, 14px) * 0.95);
+                        color: var(--vscode-editor-foreground);
+                        text-rendering: optimizeLegibility;
+                        -webkit-font-smoothing: antialiased;
+                        -moz-osx-font-smoothing: grayscale;
+                    }
+
+                    /* 阅读区域间距优化 */
+                    #reader-container {
+                        padding: 0.4em 0.8em;
+                        margin: 0 0.1em;
+                        gap: 0.4em;
+                        display: flex;
+                        flex-direction: column;
+                    }
+
+                    /* 深色模式整体优化 */
+                    @media (prefers-color-scheme: dark) {
+                        .accordion-nav {
+                            background-color: var(--vscode-editor-background);
+                            border-color: var(--vscode-panel-border, rgba(255, 255, 255, 0.08));
+                        }
+                        .accordion-header {
+                            border-color: var(--vscode-panel-border, rgba(255, 255, 255, 0.05));
+                        }
+                    }
+
+                    @media (prefers-color-scheme: light) {
+                        .accordion-nav {
+                            background-color: var(--vscode-editor-background);
+                            border-color: var(--vscode-panel-border, rgba(0, 0, 0, 0.08));
+                        }
+                    }
+                </style>
             </head>
             <body>
                 <div id="reader-container" class="hidden">
-                    <div class="nav-buttons top">
-                        <div class="font-controls">
-                            <button id="font-decrease-top">-</button>
-                            <button id="font-increase-top">+</button>
-                            <span id="font-size-top" class="font-size-display">16px</span>
+                    <!-- 顶部手风琴 -->
+                    <div class="accordion-nav">
+                        <div class="accordion-header">
+                            <button class="accordion-toggle ${this._controlsVisible ? 'expanded' : 'collapsed'}">
+                                ▼
+                            </button>
+                            <span class="accordion-title">阅读控件</span>
                         </div>
-                        <div class="page-controls">
-                            <button id="prev-top">Previous</button>
-                            <button id="next-top">Next</button>
-                        </div>
-                        <div class="close-controls">
-                            <button id="close-top">x</button>
+                        <div class="accordion-content ${this._controlsVisible ? '' : 'collapsed'}">
+                            <div class="controls-container">
+                                <div class="font-controls">
+                                    <button id="font-decrease-top">-</button>
+                                    <button id="font-increase-top">+</button>
+                                    <span id="font-size-top" class="font-size-display">16px</span>
+                                </div>
+                                <div class="page-controls">
+                                    <span class="font-size-display">(快捷键: ←)</span>
+                                    <button id="prev-top">Previous</button>
+                                    <button id="next-top">Next</button>
+                                    <span class="font-size-display">(快捷键: →)</span>
+                                </div>
+                                <div class="close-controls">
+                                    <button id="close-top">x</button>
+                                    <span class="font-size-display">(快捷键: CTRL+DEL)</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
                     <h1 id="title"></h1>
                     <div id="content"></div>
 
-                    <div class="nav-buttons bottom">
-                        <div class="font-controls">
-                            <button id="font-decrease-bottom">-</button>
-                            <button id="font-increase-bottom">+</button>
-                            <span id="font-size-bottom" class="font-size-display">16px</span>
+                    <!-- 底部手风琴 -->
+                    <div class="accordion-nav">
+                        <div class="accordion-header">
+                            <button class="accordion-toggle ${this._controlsVisible ? 'expanded' : 'collapsed'}">
+                                ▼
+                            </button>
+                            <span class="accordion-title">阅读控件</span>
                         </div>
-                        <div class="page-controls">
-                            <button id="prev-bottom">Previous</button>
-                            <button id="next-bottom">Next</button>
-                        </div>
-                        <div class="close-controls">
-                            <button id="close-bottom">x</button>
+                        <div class="accordion-content ${this._controlsVisible ? '' : 'collapsed'}">
+                            <div class="controls-container">
+                                <div class="font-controls">
+                                    <button id="font-decrease-bottom">-</button>
+                                    <button id="font-increase-bottom">+</button>
+                                    <span id="font-size-bottom" class="font-size-display">16px</span>
+                                </div>
+                                <div class="page-controls">
+                                    <span class="font-size-display">(快捷键: ←)</span>
+                                    <button id="prev-bottom">Previous</button>
+                                    <button id="next-bottom">Next</button>
+                                    <span class="font-size-display">(快捷键: →)</span>
+                                </div>
+                                <div class="close-controls">
+                                    <button id="close-bottom">x</button>
+                                    <span class="font-size-display">(快捷键: CTRL+DEL)</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -257,6 +557,7 @@ export class NovelReaderViewProvider implements vscode.WebviewViewProvider {
                     const MIN_FONT_SIZE = 10;
                     const MAX_FONT_SIZE = 35;
                     let currentFontSize = 16;
+                    let controlsVisible = ${this._controlsVisible};
 
                     // --- Button Elements ---
                     const elements = {
@@ -268,12 +569,61 @@ export class NovelReaderViewProvider implements vscode.WebviewViewProvider {
                         close: [document.getElementById('close-top'), document.getElementById('close-bottom')]
                     };
 
+                    // 获取手风琴元素
+                    const accordionHeaders = document.querySelectorAll('.accordion-header');
+                    const accordionToggles = document.querySelectorAll('.accordion-toggle');
+                    const accordionContents = document.querySelectorAll('.accordion-content');
+
                     // --- Event Listeners ---
-                    elements.prev.forEach(el => el.addEventListener('click', () => vscode.postMessage({ command: 'previousChapter' })));
-                    elements.next.forEach(el => el.addEventListener('click', () => vscode.postMessage({ command: 'nextChapter' })));
-                    elements.close.forEach(el => el.addEventListener('click', () => vscode.postMessage({ command: 'closeReader' })));
+                    elements.prev.forEach(el => el.addEventListener('click', () => vscode.postMessage({ command: '${PREVIOUS_CHAPTER}' })));
+                    elements.next.forEach(el => el.addEventListener('click', () => vscode.postMessage({ command: '${NEXT_CHAPTER}' })));
+                    elements.close.forEach(el => el.addEventListener('click', () => vscode.postMessage({ command: '${CLOSE_READER}' })));
                     elements.fontIncrease.forEach(el => el.addEventListener('click', () => updateFontSize('increase')));
                     elements.fontDecrease.forEach(el => el.addEventListener('click', () => updateFontSize('decrease')));
+
+                    // --- Accordion Functions ---
+                    function toggleAccordion() {
+                        controlsVisible = !controlsVisible;
+                        updateAccordionUI();
+                        // 发送到扩展保存状态
+                        vscode.postMessage({ command: '${TOGGLE_CONTROLS}', payload: controlsVisible });
+                    }
+
+                    function updateAccordionUI() {
+                        // 更新所有手风琴的状态（保持同步联动）
+                        accordionHeaders.forEach(header => {
+                            const content = header.parentElement.querySelector('.accordion-content');
+                            const toggle = header.querySelector('.accordion-toggle');
+
+                            if (controlsVisible) {
+                                if (content) content.classList.remove('collapsed');
+                                if (toggle) {
+                                    toggle.classList.remove('collapsed');
+                                    toggle.classList.add('expanded');
+                                    toggle.textContent = '▼';
+                                }
+                            } else {
+                                if (content) content.classList.add('collapsed');
+                                if (toggle) {
+                                    toggle.classList.remove('expanded');
+                                    toggle.classList.add('collapsed');
+                                    toggle.textContent = '▶';
+                                }
+                            }
+                        });
+                    }
+
+                    // Initialize based on current state
+                    if (!controlsVisible) {
+                        updateAccordionUI();
+                    }
+
+                    // 为所有手风琴头部添加事件监听器（合成一个大手风琴，既可以点击任意位置）
+                    if (accordionHeaders.length > 0) {
+                        accordionHeaders.forEach(header => {
+                            header.addEventListener('click', toggleAccordion);
+                        });
+                    }
 
                     // --- Functions ---
                     function updateFontSize(direction) {
@@ -285,7 +635,7 @@ export class NovelReaderViewProvider implements vscode.WebviewViewProvider {
                         titleEl.style.fontSize = currentFontSize + 'px';
                         contentEl.style.fontSize = currentFontSize + 'px';
                         elements.fontSizeDisplay.forEach(el => el.textContent = currentFontSize + 'px');
-                        vscode.postMessage({ command: 'updateFontSize', payload: currentFontSize });
+                        vscode.postMessage({ command: '${UPDATE_FONT_SIZE}', payload: currentFontSize });
                     }
 
                     function showReaderView() {
@@ -305,15 +655,15 @@ export class NovelReaderViewProvider implements vscode.WebviewViewProvider {
                             // Handle arrow keys for navigation
                             if (event.key === 'ArrowLeft') {
                                 event.preventDefault();
-                                vscode.postMessage({ command: 'previousChapter' });
+                                vscode.postMessage({ command: '${PREVIOUS_CHAPTER}' });
                             } else if (event.key === 'ArrowRight') {
                                 event.preventDefault();
-                                vscode.postMessage({ command: 'nextChapter' });
+                                vscode.postMessage({ command: '${NEXT_CHAPTER}' });
                             }
                             // Handle Ctrl+Delete to reset view
                             else if (event.ctrlKey && event.key === 'Delete') {
                                 event.preventDefault();
-                                vscode.postMessage({ command: 'ctrl+delete' });
+                                vscode.postMessage({ command: '${CTRL_DELETE}' });
                             }
                         }
                     });
@@ -338,6 +688,11 @@ export class NovelReaderViewProvider implements vscode.WebviewViewProvider {
                                 break;
                             case 'resetView':
                                 showWelcomeView();
+                                break;
+                            case 'updateControlsVisibility':
+                                const newControlsVisible = message.payload;
+                                controlsVisible = newControlsVisible;
+                                updateAccordionUI();
                                 break;
                         }
                     });

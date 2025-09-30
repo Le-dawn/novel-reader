@@ -3,6 +3,10 @@
   "displayName": "Novel Reader",
   "description": "A simple novel reader for VS Code.",
   "version": "0.0.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Le-dawn/novel-reader.git"
+  },
   "engines": {
     "vscode": "^1.66.0"
   },

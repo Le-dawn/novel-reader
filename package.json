@@ -2,7 +2,7 @@
   "name": "novel-reader-vscode",
   "displayName": "Novel Reader",
   "description": "A simple novel reader for VS Code.",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "Le-dawn",
   "icon": "icon.png",
   "repository": {

@@ -39,6 +39,13 @@ export class NovelReaderViewProvider implements vscode.WebviewViewProvider {
                 case 'previousChapter':
                     vscode.commands.executeCommand(VscodeCommandEnum.PREVIOUS_CHAPTER);
                     return;
+                case 'ctrl+delete':
+                    if (!this._currentNovel) {
+                        vscode.commands.executeCommand(VscodeCommandEnum.SHOW_CURRENT_NOVEL);
+                    } else {
+                        this.clearView();
+                    }
+                    return;
                 case 'closeReader':
                     this.clearView();
                     return;
@@ -306,7 +313,7 @@ export class NovelReaderViewProvider implements vscode.WebviewViewProvider {
                             // Handle Ctrl+Delete to reset view
                             else if (event.ctrlKey && event.key === 'Delete') {
                                 event.preventDefault();
-                                vscode.postMessage({ command: 'closeReader' });
+                                vscode.postMessage({ command: 'ctrl+delete' });
                             }
                         }
                     });

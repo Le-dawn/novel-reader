@@ -6,7 +6,7 @@ export function parseChapters(text: string): { title: string, content: string }[
     // This improved regex is designed to be more robust.
     // It looks for lines starting with "第" followed by numbers/Chinese numerals and "章", or "Chapter" followed by numbers.
     // It captures the entire chapter title line.
-    const regex = /(^\s*(第[一二三四五六七八九十百千万\d\s]+章)[^\n]*|^\s*(Chapter\s+\d+)[^\n]*)/m;
+    const regex = /(^\s*(第[零一二三四五六七八九十百千万\d\s]+章)[^\n]*|^\s*(Chapter\s+\d+)[^\n]*)/m;
 
     const lines = text.split('\n');
     const chapters: { title: string, content: string }[] = [];
